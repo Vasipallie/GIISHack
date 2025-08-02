@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LiveTranslate</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --success-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            --warning-gradient: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            --dark-bg: #0f0f23;
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --glass-bg: rgba(255, 255, 255, 0.1);
+            --text-primary: #1a1a2e;
+            --text-secondary: #64748b;
+            --border-color: rgba(255, 255, 255, 0.2);
+            --shadow-light: 0 8px 32px rgba(0, 0, 0, 0.1);
+            --shadow-medium: 0 16px 64px rgba(0, 0, 0, 0.15);
+            --shadow-heavy: 0 24px 96px rgba(0, 0, 0, 0.2);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: var(--dark-bg);
+            background-image: 
+                radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.2) 0%, transparent 50%);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1.8fr 1.2fr;
+            gap: 24px;
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 24px;
+            min-height: 100vh;
+        }
+
+        .left-panel {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 32px;
+            box-shadow: var(--shadow-medium);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .left-panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: var(--primary-gradient);
+        }
+
+        .right-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .title {
+            font-size: clamp(32px, 4vw, 42px);
+            font-weight: 700;
+            margin-bottom: 32px;
+            background: var(--primary-gradient);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+            letter-spacing: -0.02em;
+            position: relative;
+        }
+
+        .title::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 3px;
+            background: var(--primary-gradient);
+            border-radius: 2px;
+        }
+
+        .waveform-container {
+            border: 2px solid rgba(102, 126, 234, 0.3);
+            border-radius: 16px;
+            height: 120px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .waveform-container:hover {
+            border-color: rgba(102, 126, 234, 0.6);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-light);
+        }
+
+        .waveform-canvas {
+            width: 100%;
+            height: 60px;
+            border-radius: 8px;
+        }
+
+        .start-listening-btn {
+            background: var(--success-gradient);
+            color: white;
+            border: none;
+            padding: 16px 32px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 16px;
+            cursor: pointer;
+            width: 100%;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow-light);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .start-listening-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.6s;
+        }
+
+        .start-listening-btn:hover::before {
+            left: 100%;
+        }
+
+        .start-listening-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-medium);
+        }
+
+        .start-listening-btn:active {
+            transform: translateY(0);
+        }
+
+        .prediction-container {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            flex: 1;
+        }
+
+        .output-box {
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 20px;
+            min-height: 140px;
+            padding: 24px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            font-size: 18px;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            position: relative;
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+
+        .output-box:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-light);
+            border-color: rgba(102, 126, 234, 0.4);
+        }
+
+        .output-box h2 {
+            position: absolute;
+            top: 16px;
+            left: 24px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            background: var(--primary-gradient);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin: 0;
+        }
+
+        .camera-section {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: var(--shadow-medium);
+            transition: all 0.3s ease;
+        }
+
+        .camera-section:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-heavy);
+        }
+
+        .camera-status {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            padding: 16px;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border-color);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .camera-area {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: white;
+            height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: 500;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .camera-area video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .camera-area canvas {
+            display: none;
+        }
+
+        .prediction-btn {
+            background: var(--success-gradient);
+            color: white;
+            border: none;
+            padding: 14px 24px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: var(--shadow-light);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .prediction-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.6s;
+        }
+
+        .prediction-btn:hover::before {
+            left: 100%;
+        }
+
+        .prediction-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-medium);
+        }
+
+        .training-buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        #label {
+            flex: 1;
+            padding: 14px 18px;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 12px;
+            font-size: 14px;
+            font-family: inherit;
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+        }
+
+        #label:focus {
+            outline: none;
+            border-color: rgba(102, 126, 234, 0.6);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        #label::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .train-btn {
+            background: var(--primary-gradient);
+            color: white;
+            border: none;
+            padding: 14px 20px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: var(--shadow-light);
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .train-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-medium);
+        }
+
+        .start-training-btn {
+            background: var(--primary-gradient);
+            color: white;
+            border: none;
+            padding: 16px 32px;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 16px;
+            cursor: pointer;
+            width: 100%;
+            box-shadow: var(--shadow-light);
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .start-training-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.6s;
+        }
+
+        .start-training-btn:hover::before {
+            left: 100%;
+        }
+
+        .start-training-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-medium);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .container {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .right-panel {
+                order: -1;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 16px;
+            }
+            
+            .left-panel {
+                padding: 20px;
+            }
+            
+            .title {
+                font-size: 28px;
+                margin-bottom: 24px;
+            }
+            
+            .training-buttons {
+                flex-direction: column;
+            }
+        }
+
+        /* Loading animations */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .listening {
+            animation: pulse 2s infinite;
+        }
+
+        /* Glassmorphism effects */
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* Smooth transitions for state changes */
+        .output-box div {
+            transition: all 0.3s ease;
+        }
+
+        /* Enhanced focus states */
+        button:focus, input:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="left-panel">
+            <h1 class="title">LiveTranslate</h1>
+            
+            <div class="waveform-container">
+                <canvas id="waveform-canvas" class="waveform-canvas"></canvas>
+            </div>
+            
+            <button class="start-listening-btn" onclick="startListening()">Start Listening</button>
+
+            <div class="prediction-container">
+                <div id="speech-output" class="output-box">
+                    <h2>Live Speech Recognition</h2>
+                    <div id="speech-text" style="width: 100%;">Speech output will appear here...</div>
+                </div>
+
+                <div id="gesture-output" class="output-box">
+                    <h2>Gesture Recognition</h2>
+                    <div id="gesture-text" style="width: 100%;">Gesture predictions will appear here...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div class="camera-section">
+                <div class="camera-status" id="camera-status">Status of camera: ACTIVE</div>
+                <div class="camera-area">
+                    <video id="webcam" autoplay playsinline></video>
+                    <canvas id="canvas"></canvas>
+                </div>
+            </div>
+            
+            <button class="prediction-btn" onclick="showPrediction()">PREDICTION</button>
+            
+            <div class="training-buttons">
+                <input type="text" id="label" placeholder="Enter gesture label" />
+                <button class="train-btn" onclick="capture()">CAPTURE</button>
+            </div>
+
+            <button class="start-training-btn" onclick="startTraining()">Start Training Model</button>
+        </div>
+    </div>
+
+    <script>
+        // Web Speech API variables
+        let recognition;
+        let isListening = false;
+
+        // Audio context and analyser for waveform
+        let audioContext;
+        let analyser;
+        let microphone;
+        let dataArray;
+        let canvas;
+        let canvasContext;
+        let animationId;
+
+        // ASL Variables
+        const video = document.getElementById('webcam');
+        let aslCanvas, aslCtx;
+        const speechText = document.getElementById('speech-text');
+        const gestureText = document.getElementById('gesture-text');
+        const cameraStatus = document.getElementById('camera-status');
+
+        // Initialize audio context and microphone
+        async function initializeAudio() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                microphone = audioContext.createMediaStreamSource(stream);
+                
+                analyser.fftSize = 1024;
+                analyser.smoothingTimeConstant = 0.3;
+                const bufferLength = analyser.frequencyBinCount;
+                dataArray = new Uint8Array(bufferLength);
+                
+                microphone.connect(analyser);
+                
+                drawWaveform();
+            } catch (err) {
+                console.error('Error accessing microphone:', err);
+            }
+        }
+
+        // Initialize ASL Camera
+        async function initializeCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+                aslCanvas = document.getElementById('canvas');
+                aslCtx = aslCanvas.getContext('2d');
+                cameraStatus.textContent = 'Status of camera: ACTIVE';
+                
+                predictLive();
+            } catch (err) {
+                console.error('Error accessing camera:', err);
+                cameraStatus.textContent = 'Status of camera: INACTIVE - Camera access denied';
+            }
+        }
+
+        // Draw dynamic waveform with gradient
+        function drawWaveform() {
+            if (!analyser || !canvas || !canvasContext) return;
+            
+            animationId = requestAnimationFrame(drawWaveform);
+            
+            analyser.getByteTimeDomainData(dataArray);
+            
+            // Create gradient background
+            const gradient = canvasContext.createLinearGradient(0, 0, canvas.width, 0);
+            gradient.addColorStop(0, 'rgba(102, 126, 234, 0.1)');
+            gradient.addColorStop(0.5, 'rgba(118, 75, 162, 0.1)');
+            gradient.addColorStop(1, 'rgba(102, 126, 234, 0.1)');
+            
+            canvasContext.fillStyle = gradient;
+            canvasContext.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Create waveform gradient
+            const waveGradient = canvasContext.createLinearGradient(0, 0, canvas.width, 0);
+            waveGradient.addColorStop(0, '#667eea');
+            waveGradient.addColorStop(0.5, '#764ba2');
+            waveGradient.addColorStop(1, '#667eea');
+            
+            canvasContext.lineWidth = 3;
+            canvasContext.strokeStyle = waveGradient;
+            canvasContext.beginPath();
+            
+            const sliceWidth = canvas.width / dataArray.length;
+            let x = 0;
+            
+            for (let i = 0; i < dataArray.length; i++) {
+                const v = (dataArray[i] - 128) / 128.0;
+                const amplification = 3;
+                const y = (canvas.height / 2) + (v * canvas.height / 2 * amplification);
+                
+                if (i === 0) {
+                    canvasContext.moveTo(x, y);
+                } else {
+                    canvasContext.lineTo(x, y);
+                }
+                
+                x += sliceWidth;
+            }
+            
+            canvasContext.stroke();
+        }
+
+        // ASL Functions
+        function captureImage() {
+            if (!video || !aslCtx) return null;
+            aslCtx.drawImage(video, 0, 0, aslCanvas.width, aslCanvas.height);
+            return aslCanvas.toDataURL('image/jpeg');
+        }
+
+        async function capture() {
+            const label = document.getElementById('label').value.trim();
+            if (!label) return alert("Enter a gesture label first.");
+            
+            const image = captureImage();
+            if (!image) return alert("Camera not ready.");
+            
+            try {
+                const response = await fetch('/capture', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `label=${encodeURIComponent(label)}&image=${encodeURIComponent(image)}`
+                });
+                const result = await response.json();
+                cameraStatus.textContent = `Status: ${result.message}`;
+                document.getElementById('label').value = '';
+            } catch (err) {
+                console.error('Capture error:', err);
+                cameraStatus.textContent = 'Status: Capture failed';
+            }
+        }
+
+        async function startTraining() {
+            cameraStatus.textContent = "Status: Training model...";
+            try {
+                const response = await fetch('/train', { method: 'POST' });
+                const result = await response.json();
+                cameraStatus.textContent = `Status: ${result.message}`;
+            } catch (err) {
+                console.error('Training error:', err);
+                cameraStatus.textContent = 'Status: Training failed';
+            }
+        }
+
+        async function predictLive() {
+            if (!video || !aslCtx) {
+                requestAnimationFrame(predictLive);
+                return;
+            }
+            
+            const image = captureImage();
+            if (image) {
+                try {
+                    const response = await fetch('/predict', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: `image=${encodeURIComponent(image)}`
+                    });
+                    const result = await response.json();
+                    if (result.status === 'success') {
+                        gestureText.innerHTML = `<strong>Gesture:</strong> ${result.prediction}`;
+                    } else {
+                        gestureText.innerHTML = 'No gesture detected...';
+                    }
+                } catch (err) {
+                    console.error('Prediction error:', err);
+                }
+            }
+            requestAnimationFrame(predictLive);
+        }
+
+        // Initialize Web Speech API
+        function initializeSpeechRecognition() {
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
+                
+                recognition.continuous = true;
+                recognition.interimResults = true;
+                recognition.lang = 'en-US';
+                
+                recognition.onresult = function(event) {
+                    let finalTranscript = '';
+                    let interimTranscript = '';
+                    
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        const transcript = event.results[i][0].transcript;
+                        if (event.results[i].isFinal) {
+                            finalTranscript += transcript;
+                        } else {
+                            interimTranscript += transcript;
+                        }
+                    }
+                    
+                    speechText.innerHTML = `<strong>${finalTranscript}</strong><span style="color: #64748b; font-style: italic;">${interimTranscript}</span>`;
+                };
+                
+                recognition.onerror = function(event) {
+                    console.error('Speech recognition error:', event.error);
+                };
+                
+                recognition.onend = function() {
+                    if (isListening) {
+                        recognition.start();
+                    }
+                };
+            } else {
+                console.error('Speech recognition not supported');
+                alert('Speech recognition is not supported in this browser.');
+            }
+        }
+
+        function startListening() {
+            const button = document.querySelector('.start-listening-btn');
+            const waveformContainer = document.querySelector('.waveform-container');
+            
+            if (!isListening) {
+                if (recognition) {
+                    recognition.start();
+                    isListening = true;
+                    button.textContent = 'Stop Listening';
+                    button.style.background = 'var(--warning-gradient)';
+                    button.classList.add('listening');
+                    waveformContainer.classList.add('listening');
+                    speechText.innerHTML = 'Listening for speech...';
+                }
+            } else {
+                if (recognition) {
+                    recognition.stop();
+                    isListening = false;
+                    button.textContent = 'Start Listening';
+                    button.style.background = 'var(--success-gradient)';
+                    button.classList.remove('listening');
+                    waveformContainer.classList.remove('listening');
+                    speechText.innerHTML = 'Speech recognition stopped.';
+                }
+            }
+        }
+
+        function showPrediction() {
+            gestureText.innerHTML = 'Live gesture recognition active. Make a gesture in front of the camera...';
+        }
+
+        // Initialize everything when page loads
+        window.addEventListener('load', function() {
+            canvas = document.getElementById('waveform-canvas');
+            canvasContext = canvas.getContext('2d');
+            
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+            
+            initializeAudio();
+            initializeSpeechRecognition();
+            initializeCamera();
+            
+            speechText.innerHTML = 'Ready for speech recognition...';
+            gestureText.innerHTML = 'Ready for gesture detection...';
+        });
+
+        window.addEventListener('resize', function() {
+            if (canvas) {
+                canvas.width = canvas.offsetWidth;
+                canvas.height = canvas.offsetHeight;
+            }
+        });
+    </script>
+</body>
+</html>

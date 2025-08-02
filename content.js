@@ -422,7 +422,7 @@
   // --- LiveTranslate button handler
   const liveTranslateBtn = document.getElementById('a11y-live-translate');
   liveTranslateBtn.onclick = function() {
-    alert("LiveTranslate feature not implemented yet.");
+    window.open('http://127.0.0.1:5000/', '_blank');
     // You can replace the alert with your live translate functionality here.
   };
 
